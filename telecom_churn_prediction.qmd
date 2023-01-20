@@ -18,8 +18,9 @@ churn_data_raw
 View(churn_data_raw)
 ```
 
+# Exploratory Data Analysis
+
 ```{r}
-####### EDA #######
 ### Selecting Numerical variables to visualize
 num_variables <- c("Churn", "MonthlyCharges", "tenure", "TotalCharges")
 num_var_data  <-  churn_data_raw[num_variables]
