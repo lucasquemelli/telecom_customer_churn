@@ -1,3 +1,3 @@
 # Telecom Customer Churn
 
-<code><img width="100%" src="https://github.com/lucasquemelli/airbnb/blob/main/images/airbnb.png"></code>
+<code><img width="100%" src="https://github.com/lucasquemelli/telecom_customer_churn/blob/main/Images/customer_churn.png"></code>
