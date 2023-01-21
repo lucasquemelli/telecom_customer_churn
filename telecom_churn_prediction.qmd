@@ -1,10 +1,10 @@
-# Loading Data
+# 1. Loading Data
 
 ```{r}
 setwd("/Users/lucasquemelli/Documents/repos/telecom_customer_churn")
 #source ("/Users/lucasquemelli/Documents/repos/telecom_customer_churn/data_ingestion.R")
 #source ("/Users/lucasquemelli/Documents/repos/telecom_customer_churn/exploratory_data_analysis.R")
-source ("/Users/lucasquemelli/Documents/repos/telecom_customer_churn//pre_processing.R")
+#source ("/Users/lucasquemelli/Documents/repos/telecom_customer_churn//pre_processing.R")
 
 set.seed(007)
 churn_data_raw = read.csv("/Users/lucasquemelli/Documents/repos/telecom_customer_churn/data/churn.csv")
@@ -18,7 +18,116 @@ churn_data_raw
 View(churn_data_raw)
 ```
 
-# Exploratory Data Analysis
+# 2. Helper Functions
+
+## Installing Packages
+
+If the packages are not in the system, go ahead and install it and its dependencies. Then open it.
+
+```{r}
+### First specify the packages of interest
+packages = c("tidyverse", "utils","mice","dplyr",'lime','keras','ggplot2','ggthemes','tidyquant','rsample','recipes','yardstick','corrr','readr','tidyr', "phytools", "viridis")
+
+## Now load or install & load all
+package.check <- lapply(
+  packages,
+  FUN = function(x) {
+    if (!require(x, character.only = TRUE)) {
+      install.packages(x, dependencies = TRUE)
+      library(x, character.only = TRUE)
+    }
+  }
+)
+```
+
+## Numerical Variables
+
+```{r}
+### Visualizing Numerical  Variables ###
+plot_num_var <- function (churn_data_raw){
+churn_data_raw %>%
+  gather(x, y, -Churn) %>%
+  ggplot(aes(x = y, fill = Churn, color = Churn)) +
+  facet_wrap(~ x, ncol = 3, scales = "free") +
+  geom_density(alpha = 0.5) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1),
+        legend.position = "top") +
+  scale_color_tableau() +
+  scale_fill_tableau()
+
+}
+```
+
+## Identifying and removing missing values
+
+1.  We use the mice package to find out any sort of patterns that exists for the missing data values.
+
+```{r}
+### Pre-Processing data
+missing_data_snapshot <- function (churn_data_raw){
+  churn_data <- churn_data_raw %>%
+    select(-customerID)
+  mice::md.pattern(churn_data, plot = FALSE)}
+
+### Dropping those missing values
+preprocess_data <- function (churn_data_raw){
+  churn_data <- churn_data_raw %>%
+    select(-customerID)
+  mice::md.pattern(churn_data, plot = FALSE)
+  churn_data <- churn_data %>%
+    drop_na()
+  return(churn_data)}
+```
+
+## Training and test datasets split
+
+```{r}
+### Creating train data
+train_data <- function(churn_data_raw, train_proportion){
+  churn_data_tbl <- churn_data_raw %>%
+    select(-customerID) %>%
+    drop_na() %>%
+    select(Churn, everything())
+  glimpse(churn_data_tbl)
+
+
+  # Split test/training sets
+  train_test_split <- initial_split(churn_data_tbl, prop = train_proportion)
+  train_test_split
+  return(train_test_split)}
+```
+
+## Categorical Variables
+
+```{r}
+### Visualizing Categorical Variables ###
+plot_cat_var<- function (churn_data_raw){
+
+  churn_data_raw %>%
+    select(-customerID) %>%
+    select_if(is.character) %>%
+    select(Churn, everything()) %>%
+    gather(x, y, gender:PaymentMethod) %>% #select columns from gender to PaymentMethod
+    count(Churn, x, y) %>%
+    ggplot(aes(x = y, y = n, fill = Churn, color = Churn)) +
+    facet_wrap(~ x, ncol = 4, scales = "free") +
+    geom_bar(stat = "identity", alpha = 0.5) +
+    theme(axis.text.x = element_text(angle = 9, hjust = 1),
+          legend.position = "top") +
+    scale_color_tableau() +
+    scale_fill_tableau()
+}
+```
+
+# 3. Exploratory Data Analysis
+
+## 3.1. Numerical variables bivariate analysis
+
+Below, the density plots of the numerical variables.
+
+-   Here we select only the numerical variables. We input the column name of each numerical variable.
+
+-   Then, we use the function defined in the **Helper Function** section to plot density plots with the numerical variables selected previously.
 
 ```{r}
 ### Selecting Numerical variables to visualize
@@ -31,21 +140,54 @@ num_var_data  <-  churn_data_raw[num_variables]
 plot_num_var(num_var_data)
 ```
 
+-   For higher tenure (months the user has stayed with the company), the less is the churn.
+
+-   As the monthly charges (the amount that is charged to the customer every month) increases, the churn also increases.
+
+## 3.2. Categorical variables bivariate analysis
+
+Below, the stacked histograms of the categorical variables.
+
+-   We select only the variables which are of char type.
+
+-   Then, we use the function defined in the **Helper Functions** section to plot the stacked histograms below.
+
 ```{r}
 #Visualize the categorical data
 cat_var_data=churn_data_raw[,sapply(churn_data_raw,is.character) ]
 plot_cat_var(cat_var_data)
 ```
 
-# Data Pre-processing 
+-   There are more users who does not have dependents and also a higher number of churn.
 
--   In this section, we removed the missing values and split the data.
+-   Contracts of long periods have lower number of churn.
+
+-   Users with has no online security has a higher number of churn.
+
+-   Users with paperless billing has a higher number of churn.
+
+-   Users with payment method equals to electronic check has a higher number of churn.
+
+-   Users with phone service has a higher number of churn.
+
+-   Users with no tech support has a higher number of churn.
+
+# 4. Data Pre-processing
+
+## 4.1 Missing values check
+
+1.  Firstly, we used the **missing_data_snapshot** function.
+2.  Since we have found only 11 rows with missing values for 7032 in total, we chose remove all of them.
 
 ```{r}
-####### Data Pre-Processing #######
+# Missing values snapshot
 missing_data_snapshot(churn_data_raw)
-x<-preprocess_data(churn_data_raw)
+
+# Missing values removal
+x <- preprocess_data(churn_data_raw)
 ```
+
+-   Only TotalCharges has missing values. The number of missing values is 11.
 
 Since the percentage of missing values is very low, we removed all of them.
 
@@ -53,3 +195,5 @@ Since the percentage of missing values is very low, we removed all of them.
 # Percentage of missing values
 100*11/7032
 ```
+
+## 4.2 Training and test split
