@@ -67,7 +67,8 @@ churn_data_raw %>%
 missing_data_snapshot <- function (churn_data_raw){
   churn_data <- churn_data_raw %>%
     select(-customerID)
-  mice::md.pattern(churn_data, plot = FALSE)}
+  mice::md.pattern(churn_data, plot = FALSE)
+}
 
 ### Dropping those missing values
 preprocess_data <- function (churn_data_raw){
@@ -76,7 +77,8 @@ preprocess_data <- function (churn_data_raw){
   mice::md.pattern(churn_data, plot = FALSE)
   churn_data <- churn_data %>%
     drop_na()
-  return(churn_data)}
+  return(churn_data)
+}
 ```
 
 ## Training and test datasets split
@@ -90,11 +92,11 @@ train_data <- function(churn_data_raw, train_proportion){
     select(Churn, everything())
   glimpse(churn_data_tbl)
 
-
   # Split test/training sets
   train_test_split <- initial_split(churn_data_tbl, prop = train_proportion)
   train_test_split
-  return(train_test_split)}
+  return(train_test_split)
+}
 ```
 
 ## Categorical Variables
@@ -116,6 +118,30 @@ plot_cat_var<- function (churn_data_raw){
           legend.position = "top") +
     scale_color_tableau() +
     scale_fill_tableau()
+}
+```
+
+## Creating Recipe
+
+1.  We selected the target variable and the dataset using recipe function.
+2.  Tenure is a continuous variable. We used step_discretize function in order to make the variable tenure assume discrete values.
+3.  We have made log transformation into the TotalCharges variable due to its broad range.
+4.  We made dummies in order to convert categorical variables into binaries 1 and 0, then transforming them to columns. In step_dummy, we selected the categorical variables using all_nominal() and excluded the target variable using -all_outcomes().
+5.  We created the mean center using step_center function. This step is to normalize our data.
+6.  We used step_scale function in order to scale our data. Since we have variables in different scales, it is important to scale them in order to have a better performance training the model.
+7.  Finally, we used prep function to estimate the required parameters from the training set.
+
+```{r}
+# Create recipe for performing some pre-processsing steps on the data
+create_recipe <- function (train_tbl){
+rec_obj <- recipe(Churn ~ ., data = train_tbl) %>%
+  step_discretize(tenure, options = list(cuts = 6)) %>%
+  step_log(TotalCharges) %>%
+  step_dummy(all_nominal(), -all_outcomes()) %>%
+  step_center(all_predictors(), -all_outcomes()) %>%
+  step_scale(all_predictors(), -all_outcomes()) %>%
+  prep(data = train_tbl)
+  return(rec_obj)
 }
 ```
 
@@ -197,3 +223,41 @@ Since the percentage of missing values is very low, we removed all of them.
 ```
 
 ## 4.2 Training and test split
+
+We split the dataset into training and test and then created a recipe using the functions in the **Helper Functions** section.
+
+```{r}
+### Creating train train split with 80% data in train
+train_test_split <- train_data(churn_data_raw, .8) ### Input data & % of data for training
+
+# Partition train and test dataset
+train_tbl <- training(train_test_split)
+test_tbl  <- testing(train_test_split)
+
+### Creating Recipe Object
+rec_obj<- create_recipe(train_tbl)
+rec_obj
+```
+
+We baked the recipe by creating our relevant test and training data for the predictor variables, based on the transformations made on the recipe object.
+
+1.  We used the bake function to the with train_tbl the same the is found in the recipe object. Then, we excluded the target variable.
+2.  Sequentially, we also used bake for the test dataset.
+3.  glimpse() is **like a transposed version of print()** : columns run down the page, and data runs across.
+
+```{r}
+### Baking the recipes
+# Predictors
+x_train_tbl <- bake(rec_obj, new_data = as.data.frame(train_tbl)) %>% select(-Churn)
+x_test_tbl  <- bake(rec_obj, new_data = test_tbl) %>% select(-Churn)
+glimpse(x_train_tbl)
+```
+
+We also prepared the target variable for training and test datasets. For the both datasets, what we did means: if the variable Churn is equals "Yes", then attribute to it the valor 1, else 0.
+
+```{r}
+# Response variables for training and testing sets
+y_train_vec <- ifelse(pull(train_tbl, Churn) == "Yes", 1, 0)
+y_test_vec  <- ifelse(pull(test_tbl, Churn) == "Yes", 1, 0)
+glimpse(y_train_vec)
+```
