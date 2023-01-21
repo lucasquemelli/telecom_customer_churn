@@ -40,6 +40,25 @@ package.check <- lapply(
 )
 ```
 
+```{r}
+#install.packages("tensorflow")
+library(tensorflow)
+library(reticulate)
+#path_to_python <- install_python()
+virtualenv_create("r-reticulate", python = path_to_python)
+```
+
+```{r}
+library(tensorflow)
+#install_tensorflow(envname = "r-reticulate")
+```
+
+```{r}
+#install.packages("keras")
+library(keras)
+#install_keras(envname = "r-reticulate")
+```
+
 ## Numerical Variables
 
 ```{r}
@@ -253,7 +272,7 @@ x_test_tbl  <- bake(rec_obj, new_data = test_tbl) %>% select(-Churn)
 glimpse(x_train_tbl)
 ```
 
-We also prepared the target variable for training and test datasets. For the both datasets, what we did means: if the variable Churn is equals "Yes", then attribute to it the valor 1, else 0.
+We also prepared the target variable for training and test datasets. For the both datasets, what we did means: if the variable Churn is equal to "Yes", then attribute to it the valor 1, else 0.
 
 ```{r}
 # Response variables for training and testing sets
@@ -261,3 +280,102 @@ y_train_vec <- ifelse(pull(train_tbl, Churn) == "Yes", 1, 0)
 y_test_vec  <- ifelse(pull(test_tbl, Churn) == "Yes", 1, 0)
 glimpse(y_train_vec)
 ```
+
+# 5. Machine Learning Modelling
+
+## 5.1. Training the model
+
+We trained a neural network MLP (Multi-Layer Perceptron), where:
+
+-   We created (1) the first layer, (2) two hidden layers and (3) the last layer.
+
+-   For the first layer, the number of neurons is the next 2ˆn the is higher than the number of the train set (x_train_tbl) dimensions. As the number of dimensions for x_train_tbl is 20, the next 2ˆn that is higher than 20 is 2ˆ5 = 32.
+
+-   The following hidden layers have the number of neurons equals to the half of the previous layer.
+
+-   The number of neurons for the last layer is the number of dimensions for the response variable. In this case, it is 1.
+
+-   kernel_initializer is the initialization schemes that create the layer\'s weights. This initializer generates tensors with a uniform distribution.
+
+-   The **rectified linear activation function** or **ReLU** is a linear function that will output the input directly if it is positive, otherwise, it will output zero. It has become the default activation function for many types of neural networks because a model that uses it is easier to train and often achieves better performance. It is ideal for the first layers.
+
+-   We used sigmoid for the last layer since it is a classification problem and it is a binary-class output type.
+
+-   Dropout consists in randomly setting a fraction **`rate`** of input units to a valor at each update during training time, which helps prevent overfitting. The rate is a float between 0 and 1; it is the fraction of the input units to drop.
+
+-   Finally, the optimizer is adamax (ideal for classification problems) and we are looking at binary_accuracy since we have a binary-class output type.
+
+```{r}
+### Creating sequential model using Keras
+dev_keras_model<- function(x_train_tbl){
+  model_keras <- keras_model_sequential()
+
+  model_keras %>%
+    layer_dense(units = 32, kernel_initializer = "uniform", activation = "relu",
+                input_shape = ncol(x_train_tbl)) %>%
+    layer_dropout(rate = 0.2) %>%
+
+    layer_dense(units = 16, kernel_initializer = "uniform", activation = "relu") %>%
+    layer_dropout(rate = 0.2) %>%
+
+    layer_dense(units = 8, kernel_initializer = "uniform", activation = "relu") %>%
+    layer_dropout(rate = 0.2) %>%
+
+    layer_dense(units = 1,
+                kernel_initializer = "uniform", activation = "sigmoid") %>%
+
+    compile(
+      optimizer = 'adamax',
+      loss      = 'binary_crossentropy',
+      metrics   = c("binary_accuracy", "mse")
+    )
+
+  return(model_keras)
+
+}
+```
+
+```{r}
+#######  Building Keras Model#######
+model_keras <- dev_keras_model(x_train_tbl)
+
+### Viewing the model layers
+model_keras
+```
+
+## 5.2. Model Fitting and Performance
+
+```{r}
+fit_model <- function(x_train_tbl, y_train_vec){
+  history <- fit(
+    object           = model_keras,
+    x                = as.matrix(x_train_tbl),
+    y                = y_train_vec,
+    batch_size       = 32,
+    epochs           = 35,
+    validation_split = 0.30
+
+  )
+
+  return(history)
+}
+```
+
+-   The loss is the error of the model.
+
+-   The binnary_accuracy is how accurate is the model.
+
+-   MSE: mean squared error.
+
+-   val_loss: error in the validation dataset. The same is for val_binary_accuracy and val_mse.
+
+-   Epochs is the number of iterations. For each iteration, we may see the model performance. After a number o iterations, we may see the performance getting stable.
+
+```{r}
+### Model Fitting & Performance
+fit_model(x_train_tbl, y_train_vec)
+```
+
+A binary accuracy of 81% is a very good performance for a classification model. Since the validation binary accuracy is close to this value (79%), we may assume that there is no over and underfitting.
+
+Furthermore, associated with the results above, we may see the stabilization of the model performance after the epoch number 10.
