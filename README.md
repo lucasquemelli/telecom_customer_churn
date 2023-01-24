@@ -18,14 +18,24 @@ Customer churn is one of the essential metrics that every business must evaluate
 
 # 2. Solution Strategy 
 
-**Step 01 - Loading Data:** .
+**Step 01 - Loading Data:** Loading data, installing packages and opening libraries.
 
-**Step 02 - Helper Functions:** .
+**Step 02 - Helper Functions:** Auxiliar functions.
 
-**Step 03 - Exploratory Data Analysis:** .
+**Step 03 - Exploratory Data Analysis:** Exploring numerical and categorical variables.
 
-**Step 04 - Data Pre-Processing:** .
+**Step 04 - Data Pre-Processing:** Processing data to train the model.
 
-**Step 05 - Machine Learning Modelling:** .
+**Step 05 - Machine Learning Modelling:** Training and performance of the model.
 
-**Step 06 - Data Preparation:** .
+**Step 06 - Deployment:** Saving and loading model trained.
+
+# 3. Results
+
+|          Metrics        | Performance               | 
+|:-------------------------:|:-----------------------:|
+|         Binary Accuracy	  |             82%         | 
+|         MSE               |             0.13        | 
+|         Recall            |             55%         |  
+|         F1-Score          |             86%         |  
+
