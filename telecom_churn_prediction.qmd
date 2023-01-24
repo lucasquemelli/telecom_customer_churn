@@ -374,7 +374,7 @@ model_keras <- dev_keras_model(x_train_tbl)
 model_keras
 ```
 
-## 5.2. Model Fitting 
+## 5.2. Model Fitting
 
 **`validation_split()`** takes a single random sample (without replacement) of the original data set to be used for analysis. All other data points are added to the assessment set (to be used as the validation set). This is a manner of using different portions of our dataset in order to achieve a good variability during fitting (similar to Cross-Validation).
 
@@ -423,12 +423,18 @@ probability \< threshold \<- 0
 
 To Machine Learning, this threshold is commonly 0.5%. Thus, we are assuming threshold of 0.5.
 
--    If your model does multi-class classification (e.g. if it uses a \`softmax\` last-layer activation):
+-   If your model does multi-class classification (e.g. if it uses a \`softmax\` last-layer activation):
 
+```{=html}
+<!-- -->
+```
     model %\>% predict(x) %\>% k_argmax()
 
--    if your model does binary classification (e.g. if it uses a \`sigmoid\` last-layer activation):
+-   if your model does binary classification (e.g. if it uses a \`sigmoid\` last-layer activation):
 
+```{=html}
+<!-- -->
+```
     model %\>% predict(x) %\>% \`\>\`(0.5) %\>% k_cast("int32")
 
 ```{r}
@@ -547,7 +553,7 @@ Considering a value of correlation to churn equals or higher than the absolute o
 
 By using these insights, the business team may decide how characteristics must aim for preventing churn.
 
-# Deployment
+# 6. Deployment
 
 ```{r}
 # save the model in desired location
@@ -559,4 +565,4 @@ save_model_hdf5(model_keras, 'user_churn_model.hdf5')
 load_model_hdf5("/Users/lucasquemelli/Documents/repos/telecom_customer_churn/user_churn_model.hdf5", custom_objects = NULL, compile = TRUE)
 ```
 
-#  
+# 
