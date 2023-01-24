@@ -84,6 +84,12 @@ library(keras)
 library(tibble)
 ```
 
+```{r}
+#install.packages("MLmetrics")
+library(MLmetrics)
+library(dplyr)
+```
+
 ## Numerical Variables
 
 ```{r}
@@ -368,7 +374,7 @@ model_keras <- dev_keras_model(x_train_tbl)
 model_keras
 ```
 
-## 5.2. Model Fitting and Performance
+## 5.2. Model Fitting 
 
 **`validation_split()`** takes a single random sample (without replacement) of the original data set to be used for analysis. All other data points are added to the assessment set (to be used as the validation set). This is a manner of using different portions of our dataset in order to achieve a good variability during fitting (similar to Cross-Validation).
 
@@ -407,14 +413,32 @@ A binary accuracy of 81% is a very good performance for a classification model. 
 
 Furthermore, associated with the results above, we may see the stabilization of the model performance after the epoch number 10.
 
-## 5.3. Model prediction
+## 5.3. Model Performance
+
+To use probability, we stablish a threshold as follows
+
+probability \> threshold -\> 1
+
+probability \< threshold \<- 0
+
+To Machine Learning, this threshold is commonly 0.5%. Thus, we are assuming threshold of 0.5.
+
+-    If your model does multi-class classification (e.g. if it uses a \`softmax\` last-layer activation):
+
+    model %\>% predict(x) %\>% k_argmax()
+
+-    if your model does binary classification (e.g. if it uses a \`sigmoid\` last-layer activation):
+
+    model %\>% predict(x) %\>% \`\>\`(0.5) %\>% k_cast("int32")
 
 ```{r}
 ### Predictions of the model
 predict_estimates <- function(model_keras, x_test_tbl, y_test_vec){
   # Predicted Class
-  yhat_keras_class_vec <- predict(object = model_keras, x = as.matrix(x_test_tbl)) %>%
+  yhat_keras_class_vec <- predict(object = model_keras, x = as.matrix(x_test_tbl)) %>% `>`(0.5) %>% k_cast("int32") %>%
   as.vector()
+  #yhat_keras_class_vec <- model_keras %>% predict(x = as.matrix(x_test_tbl)) %>% `>`(0.5) %>% k_cast("int32") %>%
+    #as.vector()
 
   # Predicted Class Probability
   yhat_keras_prob_vec  <- predict(object = model_keras, x = as.matrix(x_test_tbl)) %>% `>`(0.5) %>% k_cast("int32") %>%
@@ -422,10 +446,6 @@ predict_estimates <- function(model_keras, x_test_tbl, y_test_vec){
   
   # Format test data and predictions for yardstick metrics
   estimates_keras_tbl <- tibble(
-    #truth      = as.factor(y_test_vec), #%>% fct_recode(yes = "1", no = "0"),
-    #estimate   = as.factor(yhat_keras_class_vec), #%>% fct_recode(yes = "1", no = "0"),
-    #truth      = str(estimates_keras_tbl$truth),
-    #estimate   = str(estimates_keras_tbl$estimate),
     truth      = factor(y_test_vec, levels = c(0, 1)),
     estimate   = factor(yhat_keras_class_vec, levels = c(0, 1)),
     class_prob = yhat_keras_prob_vec 
@@ -446,3 +466,97 @@ estimates_keras_tbl <- predict_estimates(model_keras, x_test_tbl, y_test_vec)
 # Confusion Table
 estimates_keras_tbl %>% conf_mat(truth, estimate)
 ```
+
+The model was able to predict 914 true negative (no) and 200 true positive (yes) values.
+
+```{r}
+# AUC/ROC
+estimates_keras_tbl %>% roc_auc(truth, class_prob)
+```
+
+Recall shows us how our positive values (churn) are corrected predicted.
+
+```{r}
+# Recall for positive label
+#tibble(
+#  recall = estimates_keras_tbl %>% recall(truth, estimate)
+#)
+
+Recall(y_test_vec, ifelse(yhat_keras_class_vec > .5, 1, 0), positive = 1)
+```
+
+```{r}
+#F1-Score
+estimates_keras_tbl %>% f_meas(truth, estimate, beta = 1)
+```
+
+```{r}
+### Correlation Analysis ###
+coorelation_analysis <- function (x_train_tbl,y_train_vec){
+
+
+  # Feature correlations to Churn
+  corrr_analysis <- x_train_tbl %>%
+    mutate(Churn = y_train_vec) %>%
+    correlate() %>%
+    focus(Churn) %>%
+    mutate(feature = colnames(x_train_tbl)) %>%
+    arrange(abs(Churn)) %>%
+    mutate(feature = as_factor(feature))
+  corrr_analysis
+
+  # Correlation visualization
+  corrr_analysis %>%
+    ggplot(aes(x = Churn, y = fct_reorder(feature, desc(Churn)))) +
+    geom_point() +
+    # Positive Correlations - Contribute to churn
+    geom_segment(aes(xend = 0, yend = feature),
+                 color = palette_light()[[2]],
+                 data = corrr_analysis %>% filter(Churn > 0)) +
+    geom_point(color = palette_light()[[2]],
+               data = corrr_analysis %>% filter(Churn > 0)) +
+    # Negative Correlations - Prevent churn
+    geom_segment(aes(xend = 0, yend = feature),
+                 color = palette_light()[[1]],
+                 data = corrr_analysis %>% filter(Churn < 0)) +
+    geom_point(color = palette_light()[[1]],
+               data = corrr_analysis %>% filter(Churn < 0)) +
+    # Vertical lines
+    geom_vline(xintercept = 0, color = palette_light()[[5]], size = 1, linetype = 2) +
+    geom_vline(xintercept = -0.25, color = palette_light()[[5]], size = 1, linetype = 2) +
+    geom_vline(xintercept = 0.25, color = palette_light()[[5]], size = 1, linetype = 2) +
+    # Aesthetics
+    theme_tq() +
+    labs(title = "Churn Correlation Analysis",
+         subtitle = paste("Positive Correlations (contribute to churn),",
+                          "Negative Correlations (prevent churn)"),
+         y = "Feature Importance")
+}
+```
+
+```{r}
+### Correlation Insights
+coorelation_analysis(x_train_tbl,y_train_vec)
+```
+
+Considering a value of correlation to churn equals or higher than the absolute of 0.2.
+
+-   Variables from Contract_Two.year until tenure_bin6 contribute very much to the model and users with this characteristics are less likely to churn (negative correlation values \<= -0.2).
+
+-   The variables PaymentMethod_Electronic.check, InternetService_Fiber.optic and MonthlyCharges also contributes very much to the model - and they are more likely to churn (positive correlation values \>= 0.2).
+
+By using these insights, the business team may decide how characteristics must aim for preventing churn.
+
+# Deployment
+
+```{r}
+# save the model in desired location
+save_model_hdf5(model_keras, 'user_churn_model.hdf5')
+```
+
+```{r}
+# Load model
+load_model_hdf5("/Users/lucasquemelli/Documents/repos/telecom_customer_churn/user_churn_model.hdf5", custom_objects = NULL, compile = TRUE)
+```
+
+#  
