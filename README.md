@@ -12,7 +12,7 @@ In any service-providing industry, when a customer decides to stop using the ser
 
 Customer churn is one of the essential metrics that every business must evaluate to grow. Acquiring a new customer costs more than retaining the existing ones. Companies can spend less on operating costs to reach new customers by increasing customer retention.
 
-**Purpose:** To build a machine learning model to help predict customers likely to churn in the next N months and facilitate taking business actions to reduce the churn.
+**Purpose:** To build a machine learning model to help predict customers likely to churn and facilitate taking business actions to reduce the churn.
 
 **Strategy:** we used the CRISP-DS (Cross-Industry Process - Data Science) as the main project management methodology.
 
