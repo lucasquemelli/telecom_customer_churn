@@ -16,3 +16,16 @@ Customer churn is one of the essential metrics that every business must evaluate
 
 **Strategy:** we used the CRISP-DS (Cross-Industry Process - Data Science) as the main project management methodology.
 
+# 2. Solution Strategy 
+
+**Step 01 - Loading Data:** .
+
+**Step 02 - Helper Functions:** .
+
+**Step 03 - Exploratory Data Analysis:** .
+
+**Step 04 - Data Pre-Processing:** .
+
+**Step 05 - Machine Learning Modelling:** .
+
+**Step 06 - Data Preparation:** .
